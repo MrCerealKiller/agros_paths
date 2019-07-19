@@ -6,7 +6,7 @@ import unique_id
 
 from geodesy import wu_point as WP
 from geographic_msgs.msg import WayPoint, GeoPoint
-from shapely.geometry import LinearRing, LineString, Point
+from shapely.geometry import LinearRing, LineString, Point, Polygon
 from shapely.ops import nearest_points, split
 from uuid_msgs.msg import UniqueID
 
@@ -24,6 +24,7 @@ class AgrosPathGenerator(object):
 		"""
 		Constructor for AgrosPathGenerator
 		"""
+
 		rospy.loginfo('Initializing AgrosPathGenerator...\n\n'
 					  '\t(Note: this class polls rosparams on\n' +
 					  '\tconstruction. If you are setting any parameters\n'+
@@ -114,6 +115,13 @@ class AgrosPathGenerator(object):
 
 	# Functions related to the AB line =========================================
 	def set_a(self, a):
+		"""
+		Sets the A geographic coordinate
+
+		Args:
+			a: a WayPoint object for the A coordinate
+		"""
+
 		if isinstance(a, WayPoint):
 			self.a_geo = a
 			rospy.logdebug('[set_a] Successfully set A')
@@ -122,6 +130,13 @@ class AgrosPathGenerator(object):
 						  'WayPoint.\n\tIgnoring...')
 
 	def set_b(self, b):
+		"""
+		Sets the B geographic coordinate
+
+		Args:
+			b: a WayPoint object for the B coordinate
+		"""
+
 		if isinstance(b, WayPoint):
 			self.b_geo = b
 			rospy.logdebug('[set_b] Successfully set b')
@@ -130,6 +145,11 @@ class AgrosPathGenerator(object):
 						  'WayPoint.\n\tIgnoring...')
 
 	def update_ab_line(self):
+		"""
+		Uses the members A and B (geographic coordinates) to create
+		a Shapely line representing the AB line
+		"""
+
 		if (self.a_geo and self.b_geo):
 			a = WP.WuPoint(self.a_geo).toPoint()
 			b = WP.WuPoint(self.b_geo).toPoint()
@@ -155,6 +175,13 @@ class AgrosPathGenerator(object):
 
 	# Functions related to the boundary ========================================
 	def set_boundary(self, boundary):
+		"""
+		Sets the boundary geographic coordinates
+
+		Args:
+			boundary: a list of WayPoint objects representing the boundary
+		"""
+
 		for point in boundary:
 			if not isinstance(point, WayPoint):
 				rospy.logwarn('[set_boundary] Given boundary contained\n' +
@@ -166,6 +193,11 @@ class AgrosPathGenerator(object):
 		rospy.logdebug('[set_boundary] Successfully set boundary')
 
 	def update_perimeter(self):
+		"""
+		Uses the member boundary coordinates to create a Shapely line
+		representing the outer bounds of the field
+		"""
+
 		if (self.boundary_geo):
 			boundary = []
 			for point in self.boundary_geo:
@@ -197,6 +229,13 @@ class AgrosPathGenerator(object):
 
 	# Functions related to the boundary ========================================
 	def set_headland_width(self, width):
+		"""
+		Sets the headland width in m
+
+		Args:
+			width: a number in [m] representing the headland width
+		"""
+
 		if (width > 0):
 			self.headland_width = width
 			rospy.logdebug('[set_headland_width] Successfully set headland ' +
@@ -206,6 +245,11 @@ class AgrosPathGenerator(object):
 						  '\n\tIgnoring...')
 
 	def update_headlands(self):
+		"""
+		Uses the member perimeter coordinates and the headland width
+		to create a Shapely line representing the inner headlands bound
+		"""
+
 		if (self.headland_width and self.perimeter):
 			self.headlands = self.perimeter.parallel_offset(
 				self.headland_width,
@@ -220,6 +264,13 @@ class AgrosPathGenerator(object):
 
 	# Functions related to the boundary ========================================
 	def set_tool_width(self, width):
+		"""
+		Sets the tool width in m
+
+		Args:
+			width: a number in [m] representing the tool width
+		"""
+
 		if (width > 0):
 			self.tool_width = width
 			rospy.logdebug('[set_tool_width] Successfully set tool width')
@@ -228,6 +279,13 @@ class AgrosPathGenerator(object):
 						  '\n\tIgnoring...')
 
 	def set_entry(self, entry):
+		"""
+		Sets the entry point geographic coordinate
+
+		Args:
+			entry: a WayPoint object for the entry point coordinate
+		"""
+
 		if isinstance(entry, WayPoint):
 			self.entry_geo = entry
 			rospy.logdebug('[set_entry] Successfully set entry')
@@ -236,11 +294,14 @@ class AgrosPathGenerator(object):
 						  'WayPoint.\n\tIgnoring...')
 
 	def find_equation(self, line):
-		if (isinstance(line, LineString)):
-			"""
-			Approximates line of form y = mx + b
-			"""
+		"""
+		Utility class that approximates line of form y = mx + b
 
+		Args:
+			line: a Shapely line that you want the equation of
+		"""
+
+		if (isinstance(line, LineString)):
 			# Get the given euclidean coordinates
 			x0, y0, z0 = line.coords[0]
 			x1, y1, z0 = line.coords[-1]
@@ -264,6 +325,11 @@ class AgrosPathGenerator(object):
 			return None, None
 
 	def generate_boustrophedon(self):
+		"""
+		Uses various members to generate a boustrophedon path. The algorithm
+		is heavily commented to explain the individual steps
+		"""
+
 		if (self.perimeter and self.headlands and self.ab and self.tool_width):
 			# Find m and b and exit if there is an error
 			m, b = self.find_equation(self.ab)
@@ -332,33 +398,17 @@ class AgrosPathGenerator(object):
 				direction = 'right'
 
 			# Create an empty list to add the lines to
-			path_lines = []
+			ext_lines = []
 
 			# The first line has a specific offset calculated above
-			fl = self.ab.parallel_offset(offset,
+			ext_lines.append(self.ab.parallel_offset(offset,
 					direction,
-	  				join_style=self.MITRE_JOIN_STYLE)
-
-			# Since this is still inflated split using headlands and only
-			# keep the inner segment (this is also repeated down below)
-			subnls = split(fl, self.headlands)
-			for seg in subnls:
-				if (not seg.intersects(self.perimeter)):
-					fl = seg # Replace fl with inner segment
-
-			# Get entry as euclidean coord and create a path from entry to fl
-			entry = WP.WuPoint(self.entry_geo).toPoint()
-			entry = Point(entry.x, entry.y, entry.z)
-			embark_path = LineString(nearest_points(entry, fl))
-
-			# Add both the initial path and the first line to the paths
-			path_lines.append(embark_path)
-			path_lines.append(fl)
+	  				join_style=self.MITRE_JOIN_STYLE))
 
 			# All others will be offset by the tool width because there is
 			# one half the tool width on each side of the centreline
 			while(True):
-				nl = path_lines[-1].parallel_offset(self.tool_width,
+				nl = ext_lines[-1].parallel_offset(self.tool_width,
 						direction,
 						join_style=self.MITRE_JOIN_STYLE)
 
@@ -366,12 +416,30 @@ class AgrosPathGenerator(object):
 				# If it does NOT then the newline is outside the
 				# working area and the loop exits without adding it
 				if (nl.intersects(self.headlands)):
-					subnls = split(nl, self.headlands)
-					for seg in subnls:
-						if (not seg.intersects(self.perimeter)):
-							path_lines.append(seg)
+					ext_lines.append(nl)
 				else:
 					break
+
+			# Since these lines are still inflated split using headlands
+			# and keep the inner segment (this is also repeated down below)
+			path_lines = []
+			allowed_area = Polygon(self.headlands)
+			for line in ext_lines:
+				sublns = split(line, self.headlands)
+				for seg in sublns:
+					# The validation checks if the midpoint of the line
+					# segment is contained within a polygon formed with
+					# the headland line
+					mid_point = seg.interpolate(0.5, normalized = True)
+					if (mid_point.within(allowed_area)):
+						path_lines.append(seg)
+
+			# Get entry as euclidean coord and create a path to the first line
+			# TEMPORARILY REMOVED
+			# entry = WP.WuPoint(self.entry_geo).toPoint()
+			# entry = Point(entry.x, entry.y, entry.z)
+			# embark_path = LineString(nearest_points(entry, path_lines[0]))
+			# path_lines.append(embark_path)
 
 			# TODO Temporary!!!! This will be replaced with an algorithm for connecting the individual line segments into one path
 			self.path = path_lines
@@ -385,6 +453,10 @@ class AgrosPathGenerator(object):
 
 	# Functions related to visualization =======================================
 	def plot(self):
+		"""
+		Uses MatPlotLib to visualize the member properties and generated path
+		"""
+
 		# Draw the polygon representing the perimeter first
 		if (self.perimeter):
 			perimeter_x = []
@@ -420,7 +492,7 @@ class AgrosPathGenerator(object):
 				for x, y in list(line.coords):
 					path_x.append(x)
 					path_y.append(y)
-				plt.plot(path_x, path_y)
+				plt.plot(path_x, path_y, color='fuchsia')
 
 		plt.axis('equal')
 		plt.show()

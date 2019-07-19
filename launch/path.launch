@@ -1,5 +1,5 @@
 <launch>
-	<arg name="config_file" default="$(find agros_paths)/config/reservoir.yaml" />
+	<arg name="config_file" default="$(find agros_paths)/config/example.yaml" />
 	<node name="path_generator"
           pkg="agros_paths"
           type="generate.py"

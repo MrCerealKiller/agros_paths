@@ -1,0 +1,109 @@
+# A Point in the AB Line
+# This is also the assumed starting
+# of the tractor
+a:
+  latitude: 45.027507     # deg
+  longitude: -73.837839   # deg
+  altitude: 0             # m
+
+# B Point in the AB Line
+b:
+  latitude: 45.024684     # deg
+  longitude: -73.837813   # deg
+  altitude: 0             # m
+
+# This is the point where the tractor
+# will enter the field
+entry_position:
+  latitude: 45.024450     # deg
+  longitude: -73.837651   # deg
+  altitude: 0             # m
+
+# The buffer distance required between
+# the generated paths and the boundary
+headland_width: 8.0       # m
+
+# The width of the tool's effective area
+tool_width: 5.0           # m
+
+# The boundary of the area to be covered
+# This is an ORDERED (CCW) list of points
+# that creates a polygon used as a bound
+# All points should follow this format:
+#   latitude: _____ [deg]
+#   longitude: ____ [deg]
+#   altitude: _____ [m]
+boundary:
+  points:
+    - latitude: 45.024481
+      longitude: -73.837590
+      altitude: 0
+    - latitude: 45.024423
+      longitude: -73.837275
+      altitude: 0
+    - latitude: 45.024355
+      longitude: -73.837045
+      altitude: 0
+    - latitude: 45.024309
+      longitude: -73.836826
+      altitude: 0
+    - latitude: 45.024318
+      longitude: -73.836346
+      altitude: 0
+    - latitude: 45.024331
+      longitude: -73.836033
+      altitude: 0
+    - latitude: 45.024475
+      longitude: -73.835984
+      altitude: 0
+    - latitude: 45.025328
+      longitude: -73.836052
+      altitude: 0
+    - latitude: 45.025541
+      longitude: -73.836360
+      altitude: 0
+    - latitude: 45.025768
+      longitude: -73.836053
+      altitude: 0
+    - latitude: 45.025826
+      longitude: -73.835827
+      altitude: 0
+    - latitude: 45.026268
+      longitude: -73.835872
+      altitude: 0
+    - latitude: 45.026248
+      longitude: -73.836243
+      altitude: 0
+    - latitude: 45.026975
+      longitude: -73.836294
+      altitude: 0
+    - latitude: 45.026983
+      longitude: -73.836783
+      altitude: 0
+    - latitude: 45.027033
+      longitude: -73.836854
+      altitude: 0
+    - latitude: 45.027074
+      longitude: -73.836873
+      altitude: 0
+    - latitude: 45.027449
+      longitude: -73.836882
+      altitude: 0
+    - latitude: 45.027517
+      longitude: -73.837771
+      altitude: 0
+    - latitude: 45.025806
+      longitude: -73.837788
+      altitude: 0
+    - latitude: 45.025496
+      longitude: -73.837761
+      altitude: 0
+    - latitude: 45.024831
+      longitude: -73.837756
+      altitude: 0
+    - latitude: 45.024629
+      longitude: -73.837747
+      altitude: 0
+    - latitude: 45.024559
+      longitude: -73.837691
+      altitude: 0

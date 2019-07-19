@@ -27,8 +27,8 @@ headland_width: 8.0       # m
 tool_width: 5.0           # m
 
 # The boundary of the area to be covered
-# This is an ORDERED list of points that
-# will create a polygon used as a bound
+# This is an ORDERED (CCW) list of points
+# that creates a polygon used as a bound
 # All points should follow this format:
 #   latitude: _____ [deg]
 #   longitude: ____ [deg]
