@@ -1,0 +1,9 @@
+<launch>
+	<arg name="config_file" default="$(find agros_paths)/config/reservoir.yaml" />
+	<node name="path_generator"
+          pkg="agros_paths"
+          type="generate.py"
+          output="screen">
+    <rosparam command="load" file="$(arg config_file)" />
+	</node>
+</launch>

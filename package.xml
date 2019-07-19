@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>agros_paths</name>
+  <version>0.0.0</version>
+  <description>
+    The path_planning package
+  </description>
+
+  <maintainer email="jgomallette@gmail.com">jeremy</maintainer>
+
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>geodesy</depend>
+  <depend>geographic_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>unique_id</depend>
+  <depend>uuid_msgs</depend>
+
+</package>

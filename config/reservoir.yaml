@@ -1,0 +1,49 @@
+# A Point in the AB Line
+# This is also the assumed starting
+# of the tractor
+a:
+  latitude: 45.505337     # deg
+  longitude: -73.579901   # deg
+  altitude: 0             # m
+
+# B Point in the AB Line
+b:
+  latitude: 45.505650     # deg
+  longitude: -73.580551   # deg
+  altitude: 0             # m
+
+# This is the point where the tractor
+# will enter the field
+entry_position:
+  latitude: 45.505337     # deg
+  longitude: -73.579901   # deg
+  altitude: 0             # m
+
+# The buffer distance required between
+# the generated paths and the boundary
+headland_width: 8.0       # m
+
+# The width of the tool's effective area
+tool_width: 5.0           # m
+
+# The boundary of the area to be covered
+# This is an ORDERED list of points that
+# will create a polygon used as a bound
+# All points should follow this format:
+#   latitude: _____ [deg]
+#   longitude: ____ [deg]
+#   altitude: _____ [m]
+boundary:
+  points:
+    - latitude: 45.505337
+      longitude: -73.579901
+      altitude: 0
+    - latitude: 45.506080
+      longitude: -73.579175
+      altitude: 0
+    - latitude: 45.506390
+      longitude: -73.579827
+      altitude: 0
+    - latitude: 45.505650
+      longitude: -73.580551
+      altitude: 0
