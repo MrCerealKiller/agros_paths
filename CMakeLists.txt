@@ -34,5 +34,6 @@ catkin_package(
 
 install(PROGRAMS
   scripts/generate.py
+  scripts/find_zone.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
