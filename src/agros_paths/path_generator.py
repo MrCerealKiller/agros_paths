@@ -30,7 +30,7 @@ class AgrosPathGenerator(object):
 					  '\tconstruction. If you are setting any parameters\n'+
 					  '\tmanually, please review the API and call the\n' +
 					  '\tright functions (e.x. call update_ab_line()\n' +
-					  '\tafter setting a and b with geographic points).')
+					  '\tafter setting a and b with geographic points).\n')
 
 		# Configure the AB line, if given --------------------------------------
 		self.ab = None
@@ -89,7 +89,8 @@ class AgrosPathGenerator(object):
 		self.update_headlands() # headlands should be set after calling
 
 		# Attempt to generate boustrophedon path -------------------------------
-		self.path = None
+		self.waypoints = None
+		self.segments = None
 		self.tool_width = rospy.get_param('~tool_width', None)
 		temp_entry = rospy.get_param('~entry_position', None)
 		if ('latitude' in temp_entry and
@@ -106,8 +107,8 @@ class AgrosPathGenerator(object):
 		self.generate_boustrophedon() # 
 
 		# Convert the Euclidean path back to geographic coordinates ------------
-		self.waypoints = None
-		self.segments = None
+		self.waypoints_geo = None
+		self.segments_geo = None
 
 		# Perform Visualization using matplotlib -------------------------------
 		self.visualize = True # TODO Replace with a rosparam
@@ -422,7 +423,7 @@ class AgrosPathGenerator(object):
 
 			# Since these lines are still inflated split using headlands
 			# and keep the inner segment (this is also repeated down below)
-			path_lines = []
+			self.segments = []
 			allowed_area = Polygon(self.headlands)
 			for line in ext_lines:
 				sublns = split(line, self.headlands)
@@ -432,20 +433,38 @@ class AgrosPathGenerator(object):
 					# the headland line
 					mid_point = seg.interpolate(0.5, normalized = True)
 					if (mid_point.within(allowed_area)):
-						path_lines.append(seg)
+						rospy.logwarn('HIHI')
+						self.segments.append(seg)
 
 			# Get entry as euclidean coord and create a path to the first line
 			# TEMPORARILY REMOVED
-			# entry = WP.WuPoint(self.entry_geo).toPoint()
-			# entry = Point(entry.x, entry.y, entry.z)
+			entry = WP.WuPoint(self.entry_geo).toPoint()
+			entry = (entry.x, entry.y)
 			# embark_path = LineString(nearest_points(entry, path_lines[0]))
 			# path_lines.append(embark_path)
 
-			# TODO Temporary!!!! This will be replaced with an algorithm for connecting the individual line segments into one path
-			self.path = path_lines
+			self.waypoints = []
+			self.waypoints.append(entry)
+			last_wp = entry
+			for seg in self.segments:
+				coords = list(seg.coords)
+				p0 = coords[0]
+				pf = coords[-1]
 
-			rospy.loginfo('[inflate_ab_line] inflated ab line to reach\n' +
-						  '\tperimeter bounds')
+				l0 = LineString([last_wp, p0]).length
+				lf = LineString([last_wp, pf]).length
+
+				if (l0 < lf):
+					self.waypoints.append(p0)
+					self.waypoints.append(pf)
+					last_wp = pf
+				else:
+					self.waypoints.append(pf)
+					self.waypoints.append(p0)
+					last_wp = p0
+
+			rospy.loginfo('[generate_boustrophedon] Successfully created path')
+
 		else:
 			rospy.logwarn('[generate_boustrophedon] perimeter, headlands,\n' +
 						  '\ttool width, and/or AB line has not been ' +
@@ -484,15 +503,24 @@ class AgrosPathGenerator(object):
 				ab_y.append(y)
 			plt.plot(ab_x, ab_y)
 
-		# Finally, overlay the path
-		for line in self.path:
-			if (self.path):
-				path_x = []
-				path_y = []
+		if (self.waypoints):
+			waypoints_x = []
+			waypoints_y = []
+			for wp in self.waypoints:
+				x, y = wp
+				waypoints_x.append(x)
+				waypoints_y.append(y)
+			plt.plot(waypoints_x, waypoints_y, color="lime")
+
+		# Finally, overlay the path segments
+		if (self.segments):
+			for line in self.segments:
+				segs_x = []
+				segs_y = []
 				for x, y in list(line.coords):
-					path_x.append(x)
-					path_y.append(y)
-				plt.plot(path_x, path_y, color='fuchsia')
+					segs_x.append(x)
+					segs_y.append(y)
+				plt.plot(segs_x, segs_y, color='fuchsia')
 
 		plt.axis('equal')
 		plt.show()
