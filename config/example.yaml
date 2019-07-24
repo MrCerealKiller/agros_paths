@@ -1,3 +1,7 @@
+# UTM Information about the working area
+utm_zone: "18"
+utm_band: "T"
+
 # A Point in the AB Line
 # This is also the assumed starting
 # of the tractor

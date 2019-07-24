@@ -4,10 +4,11 @@ import numpy as np
 import rospy
 import unique_id
 
-from geodesy import wu_point as WP
-from geographic_msgs.msg import WayPoint, GeoPoint
+from geodesy.utm import UTMPoint, fromLatLong
+from geographic_msgs.msg import WayPoint, GeoPoint, RouteSegment, RouteNetwork
 from shapely.geometry import LinearRing, LineString, Point, Polygon
 from shapely.ops import nearest_points, split
+from std_msgs.msg import Header
 from uuid_msgs.msg import UniqueID
 
 class AgrosPathGenerator(object):
@@ -32,6 +33,19 @@ class AgrosPathGenerator(object):
 					  '\tright functions (e.x. call update_ab_line()\n' +
 					  '\tafter setting a and b with geographic points).\n')
 
+		self.pub = rospy.Publisher('~route_network', RouteNetwork, queue_size=1)
+		self.route_network = RouteNetwork() # This is the published message
+		self.route_network.id = unique_id.toMsg(unique_id.fromRandom())
+
+		# Check UTM params -----------------------------------------------------
+		self.zone = rospy.get_param('~utm_zone', None)
+		if not self.zone:
+			rospy.logwarn('The ROS param ~utm_zone is required by this node')
+
+		self.band = rospy.get_param('~utm_band', None)
+		if not self.zone:
+			rospy.logwarn('The ROS param ~utm_band is required by this node')
+
 		# Configure the AB line, if given --------------------------------------
 		self.ab = None
 		self.azimuth = None
@@ -40,23 +54,19 @@ class AgrosPathGenerator(object):
 		if ('latitude' in temp_a and
 			'longitude' in temp_a and
 			'altitude' in temp_a):
-			wp = WayPoint()
-			wp.id = unique_id.toMsg(unique_id.fromRandom())
-			wp.position.latitude = temp_a['latitude']
-			wp.position.longitude = temp_a['longitude']
-			wp.position.altitude = temp_a['altitude']
-			self.a_geo = wp
+			lat = temp_a['latitude']
+			lon = temp_a['longitude']
+			alt = temp_a['altitude']
+			self.a_geo = fromLatLong(lat, lon, alt)
 
 		temp_b = rospy.get_param('~b', {}) # temp dict
 		if ('latitude' in temp_b and
 			'longitude' in temp_b and
 			'altitude' in temp_b):
-			wp = WayPoint()
-			wp.id = unique_id.toMsg(unique_id.fromRandom())
-			wp.position.latitude = temp_b['latitude']
-			wp.position.longitude = temp_b['longitude']
-			wp.position.altitude = temp_b['altitude']
-			self.b_geo = wp
+			lat = temp_b['latitude']
+			lon = temp_b['longitude']
+			alt = temp_b['altitude']
+			self.b_geo = fromLatLong(lat, lon, alt)
 
 		# Update the AB line itself as a shapely LineString
 		self.update_ab_line() # ab and ab_angle should be set after calling
@@ -71,11 +81,10 @@ class AgrosPathGenerator(object):
 				if ('latitude' in point and
 					'longitude' in point and
 					'altitude' in point):
-					wp = WayPoint()
-					wp.id = unique_id.toMsg(unique_id.fromRandom())
-					wp.position.latitude = point['latitude']
-					wp.position.longitude = point['longitude']
-					wp.position.altitude = point['altitude']
+					lat = point['latitude']
+					lon = point['longitude']
+					alt = point['altitude']
+					wp = fromLatLong(lat, lon, alt)
 					self.boundary_geo.append(wp)
 
 		# Update the perimeter itself as a shapely LinearRing
@@ -96,23 +105,44 @@ class AgrosPathGenerator(object):
 		if ('latitude' in temp_entry and
 			'longitude' in temp_entry and
 			'altitude' in temp_entry):
-			wp = WayPoint()
-			wp.id = unique_id.toMsg(unique_id.fromRandom())
-			wp.position.latitude = temp_entry['latitude']
-			wp.position.longitude = temp_entry['longitude']
-			wp.position.altitude = temp_entry['altitude']
-			self.entry_geo = wp
+			lat = temp_entry['latitude']
+			lon = temp_entry['longitude']
+			alt = temp_entry['altitude']
+			self.entry_geo = fromLatLong(lat, lon, alt)
 
 		# Generate a Boustrophedon patten if all other properties are updated
 		self.generate_boustrophedon() # 
 
 		# Convert the Euclidean path back to geographic coordinates ------------
-		self.waypoints_geo = None
-		self.segments_geo = None
+		self.update_geo_path()
 
 		# Perform Visualization using matplotlib -------------------------------
-		self.visualize = True # TODO Replace with a rosparam
-		self.plot()
+		self.visualize = rospy.get_param('~visualize', False)
+		if self.visualize:
+			self.plot()
+
+	# Misc. Function ===========================================================
+	def set_utm_zone(self, zone):
+		"""
+		Sets the UTM zone for the area
+
+		Args:
+			zone: a string representing the UTM zone. Ex: "18"
+		"""
+
+		self.utm_zone = zone
+		rospy.logdebug('[set_utm_zone] Successfully set UTM Zone')
+
+	def set_utm_band(self, band):
+		"""
+		Sets the UTM band for the area
+
+		Args:
+			band: a string representing the UTM band. Ex: "T"
+		"""
+
+		self.utm_band = band
+		rospy.logdebug('[set_utm_band] Successfully set UTM Band')
 
 	# Functions related to the AB line =========================================
 	def set_a(self, a):
@@ -120,40 +150,40 @@ class AgrosPathGenerator(object):
 		Sets the A geographic coordinate
 
 		Args:
-			a: a WayPoint object for the A coordinate
+			a: a UTMPoint object for the A coordinate
 		"""
 
-		if isinstance(a, WayPoint):
+		if isinstance(a, UTMPoint):
 			self.a_geo = a
 			rospy.logdebug('[set_a] Successfully set A')
 		else:
 			rospy.logwarn('[set_a] Given A was not configured as a ' +
-						  'WayPoint.\n\tIgnoring...')
+						  'UTMPoint.\n\tIgnoring...')
 
 	def set_b(self, b):
 		"""
 		Sets the B geographic coordinate
 
 		Args:
-			b: a WayPoint object for the B coordinate
+			b: a UTMPoint object for the B coordinate
 		"""
 
-		if isinstance(b, WayPoint):
+		if isinstance(b, UTMPoint):
 			self.b_geo = b
 			rospy.logdebug('[set_b] Successfully set b')
 		else:
 			rospy.logwarn('[set_b] Given B was not configured as a ' +
-						  'WayPoint.\n\tIgnoring...')
+						  'UTMPoint.\n\tIgnoring...')
 
 	def update_ab_line(self):
 		"""
-		Uses the members A and B (geographic coordinates) to create
+		Uses the members A and B (UTM coordinates) to create
 		a Shapely line representing the AB line
 		"""
 
 		if (self.a_geo and self.b_geo):
-			a = WP.WuPoint(self.a_geo).toPoint()
-			b = WP.WuPoint(self.b_geo).toPoint()
+			a = self.a_geo.toPoint()
+			b = self.b_geo.toPoint()
 
 			self.ab = LineString([(a.x, a.y, a.z), (b.x, b.y, b.z)])
 
@@ -180,13 +210,13 @@ class AgrosPathGenerator(object):
 		Sets the boundary geographic coordinates
 
 		Args:
-			boundary: a list of WayPoint objects representing the boundary
+			boundary: a list of UTMPoint objects representing the boundary
 		"""
 
 		for point in boundary:
-			if not isinstance(point, WayPoint):
+			if not isinstance(point, UTMPoint):
 				rospy.logwarn('[set_boundary] Given boundary contained\n' +
-							  '\tpoints not configured as a WayPoint.\n' +
+							  '\tpoints not configured as a UTMPoint.\n' +
 							  '\tIgnoring and exiting...')
 				return
 		# If function reaches here, boundary should be okay
@@ -202,7 +232,7 @@ class AgrosPathGenerator(object):
 		if (self.boundary_geo):
 			boundary = []
 			for point in self.boundary_geo:
-				bound = WP.WuPoint(point).toPoint()
+				bound = point.toPoint()
 				boundary.append((bound.x, bound.y, bound.z))
 			self.perimeter = LinearRing(boundary)
 
@@ -284,10 +314,10 @@ class AgrosPathGenerator(object):
 		Sets the entry point geographic coordinate
 
 		Args:
-			entry: a WayPoint object for the entry point coordinate
+			entry: a UTMPoint object for the entry point coordinate
 		"""
 
-		if isinstance(entry, WayPoint):
+		if isinstance(entry, UTMPoint):
 			self.entry_geo = entry
 			rospy.logdebug('[set_entry] Successfully set entry')
 		else:
@@ -433,15 +463,11 @@ class AgrosPathGenerator(object):
 					# the headland line
 					mid_point = seg.interpolate(0.5, normalized = True)
 					if (mid_point.within(allowed_area)):
-						rospy.logwarn('HIHI')
 						self.segments.append(seg)
 
 			# Get entry as euclidean coord and create a path to the first line
-			# TEMPORARILY REMOVED
-			entry = WP.WuPoint(self.entry_geo).toPoint()
+			entry = self.entry_geo.toPoint()
 			entry = (entry.x, entry.y)
-			# embark_path = LineString(nearest_points(entry, path_lines[0]))
-			# path_lines.append(embark_path)
 
 			self.waypoints = []
 			self.waypoints.append(entry)
@@ -469,6 +495,43 @@ class AgrosPathGenerator(object):
 			rospy.logwarn('[generate_boustrophedon] perimeter, headlands,\n' +
 						  '\ttool width, and/or AB line has not been ' +
 						  'updated.\n\tIgnoring...')
+
+	# Functions related to point -> geographic conversion ======================
+	def update_geo_path(self):
+		if (self.waypoints and self.zone and self.band):
+			waypoints_geo = []
+			for point in self.waypoints:
+				x, y = point
+				geo = UTMPoint(x, y, zone=self.zone, band=self.band).toMsg()
+
+				wp = WayPoint()
+				wp.id = unique_id.toMsg(unique_id.fromRandom())
+				wp.position = geo
+				waypoints_geo.append(wp)
+
+			segments_geo = []
+			last_wp = waypoints_geo[0].id
+			for wp in waypoints_geo:
+				seg = RouteSegment()
+				seg.id = unique_id.toMsg(unique_id.fromRandom())
+				seg.start = last_wp
+				seg.end = wp.id
+				last_wp = wp.id
+				segments_geo.append(seg)
+
+			self.route_network.points = waypoints_geo
+			self.route_network.segments = segments_geo
+
+		else:
+			rospy.logwarn('[update_geo_path] waypoints, zone, and/or band\n' +
+						  '\thas not been set/updated.\n\tIgnoring...')
+
+	# Functions related to point -> geographic conversion ======================
+	def publish_route(self):
+		self.route_network.header = Header()
+		self.route_network.header.stamp = rospy.Time.now()
+		# rospy.logdebug('{}'.format(self.route_network))
+		self.pub.publish(self.route_network)
 
 	# Functions related to visualization =======================================
 	def plot(self):

@@ -10,6 +10,14 @@ fields.
 * Shapely
 
 ## Usage
+### UTM Toolset
+To use the path generation node, you must know the UTM zone/band that you'll be
+working in (it will be added to your config file). This package provides a simple
+tool to check this information, using the following command:
+
+`rosrun agros_paths find_zone.py _lat:=<LAT> _lon:=<LON>`
+
+### Path Generation
 1. Modify or copy the example config file (`config/example.yaml`) to set your
 desire geometric and geographic properties
 2. Launch the node using `roslaunch agros_paths path.launch` and the the generator
