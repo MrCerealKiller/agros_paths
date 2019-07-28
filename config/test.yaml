@@ -6,29 +6,29 @@ utm_band: "T"
 # This is also the assumed starting
 # of the tractor
 a:
-  latitude: 45.077322     # deg
-  longitude: -74.911699   # deg
+  latitude: 45.50583650   # deg
+  longitude: -73.57913300 # deg
   altitude: 0             # m
 
 # B Point in the AB Line
 b:
-  latitude: 45.075023     # deg
-  longitude: -74.909846   # deg
+  latitude: 45.50586400   # deg
+  longitude: -73.57916650 # deg
   altitude: 0             # m
 
 # This is the point where the tractor
 # will enter the field
 entry_position:
-  latitude: 45.077322     # deg
-  longitude: -74.911699   # deg
+  latitude: 45.50583650   # deg
+  longitude: -73.57913300 # deg
   altitude: 0             # m
 
 # The buffer distance required between
 # the generated paths and the boundary
-headland_width: 8.0       # m
+headland_width: 0.10       # m
 
 # The width of the tool's effective area
-tool_width: 5.0           # m
+tool_width: 0.2           # m
 
 # The boundary of the area to be covered
 # This is an ORDERED (CCW) list of points
@@ -39,18 +39,15 @@ tool_width: 5.0           # m
 #   altitude: _____ [m]
 boundary:
   points:
-    - latitude: 45.077322
-      longitude: -74.911699
+    - latitude: 45.50583650
+      longitude: -73.57913300
       altitude: 0
-    - latitude: 45.075023
-      longitude: -74.909846
+    - latitude: 45.50584717
+      longitude: -73.57911617
       altitude: 0
-    - latitude: 45.075024
-      longitude: -74.909635
+    - latitude: 45.50587583
+      longitude: -73.57914733
       altitude: 0
-    - latitude: 45.076571
-      longitude: -74.908439
-      altitude: 0
-    - latitude: 45.078502
-      longitude: -74.909999
+    - latitude: 45.50586400
+      longitude: -73.57916650
       altitude: 0
