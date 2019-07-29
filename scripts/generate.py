@@ -4,10 +4,10 @@ import rospy
 from agros_paths import AgrosPathGenerator
 
 if __name__ == '__main__':
-	rospy.init_node('agros_path_gen')
+	rospy.init_node('agros_path_generator')
 	generator = AgrosPathGenerator()
 
-	# Decomposer update rate
+	# Generator update rate
 	rate = rospy.Rate(rospy.get_param('~rate', 0.2))
 
 	# Cycle forever at fixed rate

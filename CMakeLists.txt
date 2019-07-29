@@ -5,8 +5,10 @@ find_package(catkin REQUIRED COMPONENTS
   geodesy
   geographic_msgs
   geometry_msgs
+  nav_msgs
   rospy
   std_msgs
+  tf
   unique_id
   uuid_msgs
 )
@@ -22,8 +24,10 @@ catkin_package(
   geodesy
   geographic_msgs
   geometry_msgs
+  nav_msgs
   rospy
   std_msgs
+  tf
   unique_id
   uuid_msgs
 )
@@ -34,6 +38,7 @@ catkin_package(
 
 install(PROGRAMS
   scripts/generate.py
+  scripts/follow.py
   scripts/find_zone.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

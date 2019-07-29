@@ -1,0 +1,13 @@
+<launch>
+	<node name="agros_path_follower"
+          pkg="agros_paths"
+          type="follow.py"
+          output="screen">
+
+	  	<param name="~base_frame_id" value="base_link" />
+	  	<param name="~threshold" value="5.0" />
+
+	  	<remap from="~path" to="/agros_path_generator/path" />
+
+	</node>
+</launch>

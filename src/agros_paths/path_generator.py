@@ -527,16 +527,28 @@ class AgrosPathGenerator(object):
 						l0 = LineString([last_wp, p0]).length
 						lf = LineString([last_wp, pf]).length
 
+						# Create a new line in the right direction
 						if (l0 < lf):
-							self.waypoints.append(p0)
-							self.waypoints.append(pf)
-							last_wp = pf
+							seg = LineString([p0, pf])
 						else:
-							self.waypoints.append(pf)
-							self.waypoints.append(p0)
-							last_wp = p0
+							seg = LineString([pf, p0])
 
-						self.segments.append(closest_line)
+						# Find the size and number of intermediary points
+						# based on 1/2 of the tool width
+						size_inc = seg.length / (self.tool_width / 2)
+						num_inc = int(seg.length / size_inc)
+
+						# First add the first coordinate
+						self.waypoints.append(list(seg.coords)[0])
+						# Then add the intermediary points
+						for i in range(num_inc):
+							inc = seg.interpolate(size_inc)
+							self.waypoints.append(list(inc.coords)[0])
+						# Finally add the last coordinate and set it as last_wp
+						self.waypoints.append(list(seg.coords)[-1])
+						last_wp = list(seg.coords[-1])
+
+						self.segments.append(seg)
 						sublns.remove(closest_line)
 
 			rospy.loginfo('[generate_boustrophedon] Successfully created path')

@@ -1,13 +1,14 @@
 <launch>
 	<arg name="config_file" default="$(find agros_paths)/config/example.yaml" />
-	<node name="agros_path_gen"
+	<node name="agros_path_generator"
           pkg="agros_paths"
           type="generate.py"
           output="screen">
-    <rosparam command="load" file="$(arg config_file)" />
+	
+	    <rosparam command="load" file="$(arg config_file)" />
 
-  	<param name="~visualize" value="False" />
-  	<param name="~frame_id" value="map" />
+	  	<param name="~visualize" value="False" />
+	  	<param name="~frame_id" value="map" />
 
 	</node>
 </launch>
