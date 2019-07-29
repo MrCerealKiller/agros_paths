@@ -6,6 +6,8 @@ import unique_id
 
 from geodesy.utm import UTMPoint, fromLatLong
 from geographic_msgs.msg import WayPoint, GeoPoint, RouteSegment, RouteNetwork
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Path
 from shapely.geometry import LinearRing, LineString, Point, Polygon
 from shapely.ops import nearest_points, split
 from std_msgs.msg import Header
@@ -33,9 +35,17 @@ class AgrosPathGenerator(object):
 					  '\tright functions (e.x. call update_ab_line()\n' +
 					  '\tafter setting a and b with geographic points).\n')
 
-		self.pub = rospy.Publisher('~route_network', RouteNetwork, queue_size=1)
-		self.route_network = RouteNetwork() # This is the published message
+		self.path_pub = rospy.Publisher(
+			'~path', Path, queue_size=1)
+		
+		self.route_pub = rospy.Publisher(
+			'~route_network', RouteNetwork, queue_size=1)
+
+		self.path = Path()
+		self.route_network = RouteNetwork()
 		self.route_network.id = unique_id.toMsg(unique_id.fromRandom())
+
+		self.frame_id = rospy.get_param('~frame_id', 'map')
 
 		# Check UTM params -----------------------------------------------------
 		self.zone = rospy.get_param('~utm_zone', None)
@@ -111,9 +121,10 @@ class AgrosPathGenerator(object):
 			self.entry_geo = fromLatLong(lat, lon, alt)
 
 		# Generate a Boustrophedon patten if all other properties are updated
-		self.generate_boustrophedon() # 
+		self.generate_boustrophedon()
 
 		# Convert the Euclidean path back to geographic coordinates ------------
+		self.update_path()
 		self.update_geo_path()
 
 		# Perform Visualization using matplotlib -------------------------------
@@ -451,20 +462,6 @@ class AgrosPathGenerator(object):
 				else:
 					break
 
-			# Since these lines are still inflated split using headlands
-			# and keep the inner segment (this is also repeated down below)
-			self.segments = []
-			allowed_area = Polygon(self.headlands)
-			for line in ext_lines:
-				sublns = split(line, self.headlands)
-				for seg in sublns:
-					# The validation checks if the midpoint of the line
-					# segment is contained within a polygon formed with
-					# the headland line
-					mid_point = seg.interpolate(0.5, normalized = True)
-					if (mid_point.within(allowed_area)):
-						self.segments.append(seg)
-
 			# Get entry as euclidean coord and create a path to the first line
 			entry = self.entry_geo.toPoint()
 			entry = (entry.x, entry.y)
@@ -472,22 +469,75 @@ class AgrosPathGenerator(object):
 			self.waypoints = []
 			self.waypoints.append(entry)
 			last_wp = entry
-			for seg in self.segments:
-				coords = list(seg.coords)
-				p0 = coords[0]
-				pf = coords[-1]
 
-				l0 = LineString([last_wp, p0]).length
-				lf = LineString([last_wp, pf]).length
+			# Since these lines are still inflated split using headlands
+			# and keep the inner segment (this is also repeated down below)
+			self.segments = []
+			allowed_area = Polygon(self.headlands)
+			for line in ext_lines:
+				sublns = list(split(line, self.headlands))
+				
+				# Items in sublns will be added to
+				# self.segments and removed from sublns
+				while (sublns):
+					# Track the closest line segment
+					# and what the distance is from that
+					# segment to the last waypoint
+					closest_line = None
+					shortest_dist = None
 
-				if (l0 < lf):
-					self.waypoints.append(p0)
-					self.waypoints.append(pf)
-					last_wp = pf
-				else:
-					self.waypoints.append(pf)
-					self.waypoints.append(p0)
-					last_wp = p0
+					for seg in sublns:
+						# The validation checks if the midpoint of the line
+						# segment is contained within a polygon formed with
+						# the headland line
+						mid_point = seg.interpolate(0.5, normalized = True)
+						if (not mid_point.within(allowed_area)):
+							sublns.remove(seg)
+	
+						else:
+							# Check distance from the last waypoint
+							# to each ending coordinate of the line
+							coords = list(seg.coords)
+							l0 = LineString([last_wp, coords[0]]).length
+							lf = LineString([last_wp, coords[-1]]).length
+							
+							# Set l (length) as the shortest of the two lengths
+							if (l0 < lf):
+								l = l0
+							else:
+								l = lf
+
+							# If the shortest distance hasn't been set or
+							# l is less than the shortest distance track
+							# this line segment
+							if ((shortest_dist is None) or (l < shortest_dist)):
+								closest_line = seg
+								shortest_dist = l
+
+					# If closest_line exists, it should be added
+					# to self.segments, removed from sublns, and
+					# its waypoints should be added to self.waypoints
+					# in the correct order (the below is slightly
+					# redundant, but whatever...)
+					if (closest_line):
+						coords = list(closest_line.coords)
+						p0 = coords[0]
+						pf = coords[-1]
+
+						l0 = LineString([last_wp, p0]).length
+						lf = LineString([last_wp, pf]).length
+
+						if (l0 < lf):
+							self.waypoints.append(p0)
+							self.waypoints.append(pf)
+							last_wp = pf
+						else:
+							self.waypoints.append(pf)
+							self.waypoints.append(p0)
+							last_wp = p0
+
+						self.segments.append(closest_line)
+						sublns.remove(closest_line)
 
 			rospy.loginfo('[generate_boustrophedon] Successfully created path')
 
@@ -496,7 +546,44 @@ class AgrosPathGenerator(object):
 						  '\ttool width, and/or AB line has not been ' +
 						  'updated.\n\tIgnoring...')
 
-	# Functions related to point -> geographic conversion ======================
+	# Functions related to updating paths ======================================
+	def update_path(self):
+		if (self.waypoints):
+			path = Path()
+			local_points = []
+
+			# Using the entry point as the origin
+			# tranlate all points to a local domain			
+			for point in self.waypoints:
+				x0, y0 = self.waypoints[0]
+				x, y = point
+
+				xf = x - x0
+				yf = y - y0
+
+				local_points.append((xf, yf))
+
+			# Create a PoseStamped message for each
+			# local point and add it to the path
+			for point in local_points:
+				x, y = point
+
+				pose = PoseStamped()
+				pose.header = Header()
+				pose.header.stamp = rospy.Time.now()
+				pose.header.frame_id = self.frame_id
+				pose.pose.position.x = x
+				pose.pose.position.y = y
+				pose.pose.position.z = 0
+
+				path.poses.append(pose)
+
+			self.path = path
+
+		else:
+			rospy.logwarn('[update_geo_path] waypoints, zone, and/or band\n' +
+						  '\thas not been set/updated.\n\tIgnoring...')
+
 	def update_geo_path(self):
 		if (self.waypoints and self.zone and self.band):
 			waypoints_geo = []
@@ -527,11 +614,18 @@ class AgrosPathGenerator(object):
 						  '\thas not been set/updated.\n\tIgnoring...')
 
 	# Functions related to point -> geographic conversion ======================
-	def publish_route(self):
+	def publish(self):
+		# Publish Route
 		self.route_network.header = Header()
 		self.route_network.header.stamp = rospy.Time.now()
-		# rospy.logdebug('{}'.format(self.route_network))
-		self.pub.publish(self.route_network)
+		self.route_network.header.frame_id = self.frame_id
+		self.route_pub.publish(self.route_network)
+
+		# Publish Path
+		self.path.header = Header()
+		self.path.header.stamp = rospy.Time.now()
+		self.path.header.frame_id = self.frame_id
+		self.path_pub.publish(self.path)
 
 	# Functions related to visualization =======================================
 	def plot(self):

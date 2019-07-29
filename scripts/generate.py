@@ -4,7 +4,7 @@ import rospy
 from agros_paths import AgrosPathGenerator
 
 if __name__ == '__main__':
-	rospy.init_node('path_planner')
+	rospy.init_node('agros_path_gen')
 	generator = AgrosPathGenerator()
 
 	# Decomposer update rate
@@ -12,6 +12,6 @@ if __name__ == '__main__':
 
 	# Cycle forever at fixed rate
 	while not rospy.is_shutdown():
-		generator.publish_route()
+		generator.publish()
 		rate.sleep()
 	rospy.spin()
