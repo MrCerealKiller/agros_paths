@@ -45,7 +45,7 @@ class AgrosPathGenerator(object):
 		self.route_network = RouteNetwork()
 		self.route_network.id = unique_id.toMsg(unique_id.fromRandom())
 
-		self.frame_id = rospy.get_param('~frame_id', 'map')
+		self.frame_id = rospy.get_param('~frame_id', 'odom')
 
 		# Check UTM params -----------------------------------------------------
 		self.zone = rospy.get_param('~utm_zone', None)

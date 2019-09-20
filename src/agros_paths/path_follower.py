@@ -6,6 +6,7 @@ from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
 from shapely.geometry import LineString
 from std_msgs.msg import Header, Float64
+from tf.transformations import euler_from_quaternion
 
 class AgrosPathFollower(object):
 	"""
@@ -119,7 +120,9 @@ class AgrosPathFollower(object):
 				dy = (yg - y)
 
 				goal_dist = direct_line.length
-				goal_bearing = np.arctan2(dx, dy)
+				
+				goal_bearing_abs = np.arctan2(dx, dy)
+				goal_bearing = goal_bearing_abs - yaw
 
 				self.dist_pub.publish(goal_dist)
 				self.angle_pub.publish(goal_bearing)
