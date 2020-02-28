@@ -7,7 +7,9 @@
 	
 	    <rosparam command="load" file="$(arg config_file)" />
 
-	  	<param name="~visualize" value="False" />
+	    <param name="~pub_rate" value="0.2" />
+	  	<param name="~visualize" value="True" />
+	  	<param name="~run_on_start" value="False" />
 	  	<param name="~frame_id" value="odom" />
 
 	</node>

@@ -2,6 +2,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import rospy
+import rosparam
 import unique_id
 
 from geodesy.utm import UTMPoint, fromLatLong
@@ -10,7 +11,7 @@ from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
 from shapely.geometry import LinearRing, LineString, Point, Polygon
 from shapely.ops import nearest_points, split
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Bool
 from uuid_msgs.msg import UniqueID
 
 class AgrosPathGenerator(object):
@@ -22,18 +23,10 @@ class AgrosPathGenerator(object):
 	OFFSET_DIRECTION = 'left' # With CCW, + is on LHS of closed line
 	MITRE_JOIN_STYLE = 2 	  # Shapely constant --> "MITRED"
 
-	# Constructor ==============================================================
 	def __init__(self):
 		"""
 		Constructor for AgrosPathGenerator
 		"""
-
-		rospy.loginfo('Initializing AgrosPathGenerator...\n\n'
-					  '\t(Note: this class polls rosparams on\n' +
-					  '\tconstruction. If you are setting any parameters\n'+
-					  '\tmanually, please review the API and call the\n' +
-					  '\tright functions (e.x. call update_ab_line()\n' +
-					  '\tafter setting a and b with geographic points).\n')
 
 		self.path_pub = rospy.Publisher(
 			'~path', Path, queue_size=1)
@@ -41,11 +34,45 @@ class AgrosPathGenerator(object):
 		self.route_pub = rospy.Publisher(
 			'~route_network', RouteNetwork, queue_size=1)
 
+		self.frame_id = rospy.get_param('~frame_id', 'odom')
+		self.run_on_start = rospy.get_param('~run_on_start', False)
+		self.visualize = rospy.get_param('~visualize', False)
+
 		self.path = Path()
 		self.route_network = RouteNetwork()
 		self.route_network.id = unique_id.toMsg(unique_id.fromRandom())
+		self.zone = None
+		self.band = None
+		self.ab = None
+		self.azimuth = None
+		self.perimeter = None
+		self.headlands = None
+		self.headland_width = None
+		self.waypoints = None
+		self.segments = None
+		self.tool_width = None
 
-		self.frame_id = rospy.get_param('~frame_id', 'odom')
+		if self.run_on_start:
+			self.run(False)
+
+	def run(self, req):
+		"""
+		Run the generate process
+		"""
+
+		rospy.loginfo('Running the generate sequence...\n\n'
+					  '\t(Note: this will reload all params.\n'
+					  '\tCheck the API for manual usage.)')
+
+		if req:
+			#rospy.logdebug(req)
+			paramlist = rosparam.load_file(req.path.data, rospy.get_name())
+			for params, ns in paramlist:
+				rosparam.upload_params(ns, params)
+
+		self.path = Path()
+		self.route_network = RouteNetwork()
+		self.route_network.id = unique_id.toMsg(unique_id.fromRandom())
 
 		# Check UTM params -----------------------------------------------------
 		self.zone = rospy.get_param('~utm_zone', None)
@@ -128,11 +155,11 @@ class AgrosPathGenerator(object):
 		self.update_geo_path()
 
 		# Perform Visualization using matplotlib -------------------------------
-		self.visualize = rospy.get_param('~visualize', False)
 		if self.visualize:
 			self.plot()
 
-	# Misc. Function ===========================================================
+		return Bool(True)
+
 	def set_utm_zone(self, zone):
 		"""
 		Sets the UTM zone for the area
@@ -155,7 +182,6 @@ class AgrosPathGenerator(object):
 		self.utm_band = band
 		rospy.logdebug('[set_utm_band] Successfully set UTM Band')
 
-	# Functions related to the AB line =========================================
 	def set_a(self, a):
 		"""
 		Sets the A geographic coordinate
@@ -215,7 +241,6 @@ class AgrosPathGenerator(object):
 			rospy.logwarn('[update_ab_line] a_geo and/or b_geo were' +
 						  'not set.\n\tIgnoring...')
 
-	# Functions related to the boundary ========================================
 	def set_boundary(self, boundary):
 		"""
 		Sets the boundary geographic coordinates
@@ -269,7 +294,6 @@ class AgrosPathGenerator(object):
 			rospy.logwarn('[update_perimeter] boundary_geo was not set with ' +
 						  'geographic coords.\n\tIgnoring...')
 
-	# Functions related to the boundary ========================================
 	def set_headland_width(self, width):
 		"""
 		Sets the headland width in m
@@ -304,7 +328,6 @@ class AgrosPathGenerator(object):
 			rospy.logwarn('[update_headlands] headland_width and/or\n' +
 						  '\tboundary has not been updated.\n\tIgnoring...')
 
-	# Functions related to the boundary ========================================
 	def set_tool_width(self, width):
 		"""
 		Sets the tool width in m
@@ -558,7 +581,6 @@ class AgrosPathGenerator(object):
 						  '\ttool width, and/or AB line has not been ' +
 						  'updated.\n\tIgnoring...')
 
-	# Functions related to updating paths ======================================
 	def update_path(self):
 		if (self.waypoints):
 			path = Path()
@@ -625,7 +647,6 @@ class AgrosPathGenerator(object):
 			rospy.logwarn('[update_geo_path] waypoints, zone, and/or band\n' +
 						  '\thas not been set/updated.\n\tIgnoring...')
 
-	# Functions related to point -> geographic conversion ======================
 	def publish(self):
 		# Publish Route
 		self.route_network.header = Header()
@@ -639,7 +660,6 @@ class AgrosPathGenerator(object):
 		self.path.header.frame_id = self.frame_id
 		self.path_pub.publish(self.path)
 
-	# Functions related to visualization =======================================
 	def plot(self):
 		"""
 		Uses MatPlotLib to visualize the member properties and generated path

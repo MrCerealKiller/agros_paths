@@ -15,6 +15,21 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_python_setup()
 
+################
+## ROS Config ##
+################
+
+## Generate services in the 'srv' folder
+add_service_files(
+  FILES
+  GeneratePath.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 ###################
 ## Catkin Config ##
 ###################

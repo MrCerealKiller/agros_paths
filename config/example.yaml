@@ -6,21 +6,21 @@ utm_band: "T"
 # This is also the assumed starting
 # of the tractor
 a:
-  latitude: 45.505337     # deg
-  longitude: -73.579901   # deg
+  latitude: 45.077322     # deg
+  longitude: -74.911699   # deg
   altitude: 0             # m
 
 # B Point in the AB Line
 b:
-  latitude: 45.505650     # deg
-  longitude: -73.580551   # deg
+  latitude: 45.075023     # deg
+  longitude: -74.909846   # deg
   altitude: 0             # m
 
 # This is the point where the tractor
 # will enter the field
 entry_position:
-  latitude: 45.505337     # deg
-  longitude: -73.579901   # deg
+  latitude: 45.077322     # deg
+  longitude: -74.911699   # deg
   altitude: 0             # m
 
 # The buffer distance required between
@@ -39,15 +39,18 @@ tool_width: 5.0           # m
 #   altitude: _____ [m]
 boundary:
   points:
-    - latitude: 45.505337
-      longitude: -73.579901
+    - latitude: 45.077322
+      longitude: -74.911699
       altitude: 0
-    - latitude: 45.506080
-      longitude: -73.579175
+    - latitude: 45.075023
+      longitude: -74.909846
       altitude: 0
-    - latitude: 45.506390
-      longitude: -73.579827
+    - latitude: 45.075024
+      longitude: -74.909635
       altitude: 0
-    - latitude: 45.505650
-      longitude: -73.580551
+    - latitude: 45.076571
+      longitude: -74.908439
+      altitude: 0
+    - latitude: 45.078502
+      longitude: -74.909999
       altitude: 0
